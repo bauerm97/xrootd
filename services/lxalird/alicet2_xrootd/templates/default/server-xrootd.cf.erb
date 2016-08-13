@@ -1,0 +1,57 @@
+
+#				#
+#	COMMON section          #
+#				#
+all.export / nolock r/w nocheck norcreate
+
+all.role server
+all.manager <%= node["t2"]["redirector-hostname"] %> 3122
+
+#all.trace debug all
+
+#				#
+#	XRD Daemon section	#
+#				#
+
+xrd.protocol xrootd *
+all.adminpath <%= node["xrootd"]["installdir"] %>/admin
+#xrd.pidpath <%= node["xrootd"]["installdir"] %>/admin
+#cms.pidpath <%= node["xrootd"]["installdir"] %>/admin
+xrd.port 1094
+#xrootd.monitor all flush 60s window 30s dest files info user MONALISA_HOST:9930
+xrootd.async off
+xrootd.chksum max 2 md5
+xrd.sched mint 32 maxt 2048 avlt 512 idle 780
+
+#                               #
+#     3rd party xfers stuff     #
+#                               #
+
+
+# Enable window scaling on the monostream connection
+#				#
+#	  CMSD Section		#
+#				#
+
+cms.delay servers 1 startup 10
+cms.space 2g 5g
+#                               #
+#				#
+#	   OSS Section		#
+#   Here the real fun begins	#
+#                               #
+
+oss.defaults nomig nodread nocheck norcreate nolock
+oss.alloc 512M 2 0
+oss.fdlimit * max
+
+OSSCACHE
+
+
+# The funny ALICE name translation, for the global metamanager
+# to aggregate all the clusters
+
+# The metamanager acts as a virtual stager
+# Beware, internally xrootd strips the trailing slashes
+# So, no point in adding them here
+oss.localroot <%=node["xrootd"]["LOCALROOT"]%>

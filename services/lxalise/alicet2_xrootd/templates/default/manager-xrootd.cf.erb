@@ -1,0 +1,40 @@
+
+#				#
+#	COMMON section          #
+#				#
+
+all.export / r/w
+
+all.role manager
+all.manager <%= node["t2"]["redirector-hostname"] %> 3122
+all.trace debug all
+
+#				#
+#	XRD Daemon section	#
+#				#
+
+#xrd.network nodnr
+xrd.protocol xrootd *
+all.adminpath <%= node["xrootd"]["installdir"] %>/admin
+#xrd.pidpath <%= node["xrootd"]["installdir"] %>/admin
+#cms.pidpath <%= node["xrootd"]["installdir"] %>/admin
+xrd.port 1094
+#xrootd.monitor all flush 60s window 30s dest files info user MONALISA_HOST:9930
+
+#ofs.tpc pgm <%= node["xrootd"]["installdir"] %>/bin/xrdcp
+
+#				#
+#	  CMSD Section		#
+#				#
+
+cms.delay servers 1 startup 10
+
+cms.sched cpu 100
+
+
+# Specify how servers are selected for file creation
+cms.space min 2% 1g 5% 5g
+
+#cms.dfs limit 0 lookup distrib mdhold 0 redirect immed
+
+#xrd.network routes split

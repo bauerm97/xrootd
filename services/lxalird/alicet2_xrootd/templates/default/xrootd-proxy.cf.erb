@@ -1,0 +1,12 @@
+if lxaliproxyrd1 lxaliproxyrd2
+  all.role proxy manager
+else
+  all.role proxy server
+fi
+all.manager proxy lxaliproxyrd.vagrant.test+ 3121
+pss.origin =
+
+all.export /xroot:/
+ofs.persist off
+all.pidpath /var/run/xrootd
+

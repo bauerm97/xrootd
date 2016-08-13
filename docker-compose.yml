@@ -1,0 +1,19 @@
+version: '2'
+
+services:
+
+  lxalic:
+    build:
+      context: ./services/lxalic
+
+  lxalidns:
+    build:
+      context: ./services/lxalidns 
+    
+  lxalird:
+    build:
+      context: ./services/lxalird
+
+  lxalise:
+    build:
+      context: ./services/lxalise

@@ -1,0 +1,312 @@
+#!/bin/bash
+
+### BEGIN INIT INFO
+# Provides:           <%= @values["NAME"] %>
+# Required-Start:     <%= @values["Required-Start"] %>
+# Required-Stop:      <%= @values["Required-Stop"] %>
+# Default-Start:      <%= @values["Default-Start"] %>
+# Default-Stop:       <%= @values["Default-Stop"] %>
+# Short-Description:	<%= @values["Short-Description"] %>
+### END INIT INFO
+
+# Quick start-stop-daemon example, derived from Debian /etc/init.d/ssh
+# Taken from: https://gist.github.com/alobato/1968852
+
+set -e
+
+# NAME is just for display purposes.
+NAME=<%= @values["NAME"] %>
+# The full command line of a given process with PID x can be found in /proc/$x/cmdline.
+# It is a string containing the executable name, followed by arguments, all delimited by null bytes 0x00.
+# CMDLINE_SEARCH_POSITION will typically be 1 for native executables, 2 for interpreted scripts (bash, python, ...).
+CMDLINE_SEARCH_POSITION=<%= @values["CMDLINE_SEARCH_POSITION"] %>
+# If DAEMON is not found in /proc/$x/cmdline, but instead a different determined string,
+# define it here. Leave commented out if not needed.
+<% if @values["CMDLINE_SEARCH_DAEMON_OVERRIDE"]!=nil and @values["CMDLINE_SEARCH_DAEMON_OVERRIDE"] then %>
+CMDLINE_SEARCH_DAEMON_OVERRIDE="<%= @values["CMDLINE_SEARCH_DAEMON_OVERRIDE"] %>"
+<% else %>
+#CMDLINE_SEARCH_DAEMON_OVERRIDE="<%= @values["CMDLINE_SEARCH_DAEMON_OVERRIDE"] %>"
+<% end %>
+# PIDFILE is the full filename of the PID file we expect the daemon to write.
+PIDFILE=<%= @values["PIDFILE"] %>
+# PIDDIR is the directory in which PIDFILE resides.
+PIDDIR=<%= @values["PIDDIR"] %>
+# DAEMON: Full filename of the daemon.
+DAEMON=<%= @values["DAEMON"] %>
+# DAEMON_OPTS: Arguments given to the daemon when starting.
+DAEMON_OPTS="<%= @values["DAEMON_OPTS"] %>"
+# USER: Username, under which the daemon process will be started.
+USER=<%= @values["USER"] %>
+# GROUP: Group, under which the daemon process will be started.
+GROUP=<%= @values["GROUP"] %>
+# LLP: Optional: Will be written to LD_LIBRARY_PATH.
+# If you don't need to define any special LD_LIBRARY_PATH, comment this out.
+LLP=<%= @values["LLP"] %>
+# PTH: Optional: Will be written to PATH.
+# If you don't need to define any special PATH, comment this out.
+PTH=<%= @values["PTH"] %>
+# <%= @values["STOP_COMMAND"] %>: Explicit start command to start the daemon.
+# START_COMMAND and STOP_COMMAND are no longer defined as bash variables here
+# to prevent misery with escaping and too early execution of the $() operator
+# START_COMMAND="<%= @values["START_COMMAND"] %>"
+# STOP_COMMAND: Explicit stop command to stop the daemon.
+# STOP_COMMAND="<%= @values["STOP_COMMAND"] %>"
+# DELAY_BETWEEN_START_AND_CHECK: Number of seconds we wait for the daemon to create his PID file after starting
+DELAY_BETWEEN_START_AND_CHECK=<%= @values["DELAY_BETWEEN_START_AND_CHECK"] %>
+# DELAY_BETWEEN_STOP_AND_CHECK: Number of seconds we wait for the daemon to delete his PID file after stopping
+DELAY_BETWEEN_STOP_AND_CHECK=<%= @values["DELAY_BETWEEN_STOP_AND_CHECK"] %>
+
+<% @values["additional_pre_exec_commands"].each do |x| -%>
+<%= x %>
+<% end %>
+
+# Overwrite LD_LIBRARY_PATH, if $LLP is specified
+if [ ! -z "$LLP" ]; then
+	echo "NOTICE: Setting LD_LIBRARY_PATH to $LLP"
+	export LD_LIBRARY_PATH=$LLP
+fi
+
+# Overwrite PATH, if $PTH is specified
+if [ ! -z "$PTH" ]; then
+	echo "NOTICE: Setting PATH to $PTH"
+	export PATH=$PTH
+fi
+
+# The PID directory needs to exist, and be owned by $USER
+if [ ! -d "$PIDDIR" ]; then
+	echo "NOTICE: PID directory $PIDDIR does not exist, attempting to create it."
+	mkdir "$PIDDIR"
+	chown -R $USER "$PIDDIR"
+fi
+if [ ! -w "$PIDDIR" ]; then
+	echo "ERROR: PID directory $PIDDIR not writable. Please make sure we can write to it as user $USER."
+fi
+
+
+get_pid()
+{
+	# Read the PID file from as specified in $1 and return the number inside.
+	#
+	# Arguments:
+	# $1: Filename of the PID file
+	#
+	# Returns via global variable: $PID
+	#
+	# Returns via exit code:
+	# 0: Success
+	# 1: Error: PID file does not exist
+	# 2: Error: PID file exists, but does not contain a valid integer
+	# Returns the PID if the PID file exists. 0 otherwise.
+	# Do not interpret the result of this function as an error code.
+
+	if [ -e $1 ];	# PID file exists
+	then
+		#echo "NOTICE: PID file '$1' exists."
+		bla=$(cat "$1")
+
+		if [[ $bla =~ ^[0-9]+$ ]]
+		then
+			#echo "NOTICE: PID file '$1' read successfully. PID=$bla."
+			PID=$bla
+			return 0
+		else
+			#echo "ERROR: PID file '$1' does not contain a valid integer: $bla."
+			return 2
+		fi
+
+	else		# PID file does not exist
+		#echo "NOTICE: PID file '$1' does not exist."
+		return 1
+	fi
+}
+
+process_exists()
+{
+	# Check whether a process with the PID passed in $1 exists.
+	#
+	# Arguments:
+	# $1: The PID to check
+	# $2: The position in /proc/$1/cmdline at which we expect the DAEMON.
+	#
+	# Returns via exit code:
+	# 0 if a process with that PID does exist and it matches the executable name
+	# 1 if no such process exists
+	# 2 if a process with that PID exists, but the executable name does not match
+
+	#echo "1: $1"
+	#echo "2: $2"
+
+	if [ -d "/proc/$1" ]
+	then # Process does exist
+		# strings -1 converts the 0x00 characters to newlines
+		# awk NR==num returns only line number num.
+		cmdline_part=`cat /proc/$1/cmdline | strings -1 | awk "NR==$2"`
+
+		if [ -n "$CMDLINE_SEARCH_DAEMON_OVERRIDE" ]
+		then
+			compare_to_this=$CMDLINE_SEARCH_DAEMON_OVERRIDE
+		else
+			compare_to_this=$DAEMON
+		fi
+
+		if [[ "$cmdline_part" == "$compare_to_this" ]]
+		then	# Process is the correct one
+			echo "NOTICE: Process with PID '$1' exists and matches the expectation '$compare_to_this' at position $2 in /proc/$1/cmdline."
+			return 0
+		else	# Process is the wrong one
+			echo "ERROR: Process with PID '$1' exists, but it has '$cmdline_part' instead of '$compare_to_this' at position $2 in /proc/$1/cmdline."
+			return 2
+		fi
+	else # Process doesn't exist
+		echo "NOTICE: Process with PID '$1' does not exist."
+		return 1
+	fi
+}
+
+rm_pid_file()
+{
+	# Deletes the file specified in $1
+	#
+	# Arguments:
+	# $1: The file to delete
+	#
+	# Returns via exit code:
+	# The exit code of the rm command
+
+	echo "NOTICE: Trying to delete the file '$1'."
+	rm -rf "$1"
+	return $?
+}
+
+daemon_status()
+{
+	echo "NOTICE: Checking for a running instance of '$NAME'."
+	#echo "NOTICE: Checking whether the PID file '$PIDFILE' exists."
+	if get_pid $PIDFILE
+	then	# PID file exists.
+		if process_exists $PID $CMDLINE_SEARCH_POSITION	# The variable PID was written by get_pid
+		then	# PID file exists, corresponding process too.
+			echo "NOTICE: '$NAME' is running, PID='$PID'."
+			return 0
+		else	# PID file exists, but not the corresponding process. Delete stale PID file.�
+			echo "NOTICE: The PID file '$PIDFILE' (PID='$PID') was found, but not the corresponding process. Trying to delete the stale PID file."
+			echo "NOTICE: '$NAME' does not seem to be running."
+			rm_pid_file $PIDFILE
+			return 1
+		fi
+	else	# PID file does not exist. Start.
+		echo "NOTICE: No PID file '$PIDFILE' was found."
+		echo "NOTICE: '$NAME' does not seem to be running."
+		return 2
+	fi
+}
+
+daemon_start()
+{
+	echo "Starting daemon '$NAME' and then waiting $DELAY_BETWEEN_START_AND_CHECK seconds."
+	
+
+        start-stop-daemon --start --chuid $USER:$GROUP --quiet --background --pidfile $PIDFILE --make-pidfile --exec <%=@values["DAEMON"]%> -- <%=@values["DAEMON_OPTS"]%>
+
+	sleep $DELAY_BETWEEN_START_AND_CHECK
+
+	if get_pid $PIDFILE
+	then
+		if process_exists $PID $CMDLINE_SEARCH_POSITION
+		then
+			echo "SUCCESS: '$NAME' was started successfully, PID='$PID'."
+			exit 0
+		else
+			echo "ERROR: A PID file '$PIDFILE' has been created for PID='$PID', but no corresponding process was found."
+			exit 2
+		fi
+	else
+		echo "ERROR: No PID file '$PIDFILE' has been created. Start was probably not successful."
+		exit 1
+	fi
+}
+
+daemon_stop()
+{
+	echo "Stopping daemon '$NAME' and then waiting $DELAY_BETWEEN_STOP_AND_CHECK seconds."
+	<%= @values["STOP_COMMAND"] %>
+
+	sleep $DELAY_BETWEEN_STOP_AND_CHECK
+
+	if get_pid $PIDFILE
+	then	# the PID file still exists
+		if process_exists $PID $CMDLINE_SEARCH_POSITION
+		then	# and the correct process is still running
+			if daemon_kill $PID
+			then	# now it's dead
+				if rm_pid_file $PIDFILE
+				then
+					echo "SUCCESS: '$NAME' has been stopped by killing it, and the PID file '$PIDFILE' has been deleted 'manually'."
+					return 0
+				else
+					echo "SUCCESS/WARNING: '$NAME' has been stopped by killing it, but the PID file '$PIDFILE' could not be deleted."
+					return 1
+				fi
+			else	# it's still running
+				echo "ERROR: '$NAME' did not stop gracefully and could not even be killed."
+				return 2
+			fi
+		else
+				if rm_pid_file $PIDFILE
+				then
+					echo "SUCCESS: '$NAME' has been stopped gracefully, and the PID file '$PIDFILE' has been deleted 'manually'."
+					return 0
+				else
+					echo "SUCCESS/WARNING: '$NAME' has been stopped gracefully, but the PID file '$PIDFILE' could not be deleted."
+					return 3
+				fi
+		fi
+	else	# the PID file was removed by the start-stop-daemon
+		echo "SUCCESS: '$NAME' has been stopped."
+		return 0
+	fi
+}
+
+daemon_kill()
+{
+	kill -9 $1
+	return $?
+}
+
+
+case "$1" in
+  start)
+	if daemon_status
+	then	# already running
+		echo "NOTICE: '$NAME' is already running."
+	else	# needs to be started
+		daemon_start
+	fi
+	;;
+  stop)
+	if daemon_status
+	then	# is running, needs to be stopped
+		daemon_stop
+	else	# was already stopped
+		echo "NOTICE: '$NAME' was already stopped."
+	fi
+	;;
+  status)
+	daemon_status
+	;;
+  restart)
+	if daemon_status
+	then	# running, restart needed
+		daemon_stop
+		daemon_start
+	else	# not running, just start is needed
+		daemon_start
+	fi
+	;;
+
+  *)
+	echo "Usage: "$0" {start|stop|status|restart}"
+	exit 1
+esac
+
+exit 0

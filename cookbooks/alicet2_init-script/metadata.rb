@@ -1,0 +1,6 @@
+name             'alicet2_init-script'
+maintainer       'Distributed Computing'
+maintainer_email 'distributed-computing@gsi.de'
+license          'All rights reserved'
+description      'Installs/Configures init scripts'
+version          '0.1.0'

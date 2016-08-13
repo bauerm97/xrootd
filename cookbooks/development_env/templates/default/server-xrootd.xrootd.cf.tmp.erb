@@ -1,0 +1,87 @@
+
+#				#
+#	COMMON section          #
+#				#
+all.export / nolock r/w nocheck norcreate
+
+all.role server
+all.manager MANAGERHOST CMSDMANAGERPORT
+
+#all.trace debug all
+
+#				#
+#	XRD Daemon section	#
+#				#
+
+xrd.protocol xrootd *
+all.adminpath XRDBASEDIR/admin
+xrd.pidpath XRDBASEDIR/admin
+cms.pidpath XRDBASEDIR/admin
+xrd.port XRDSERVERPORT
+xrootd.monitor all flush 60s window 30s dest files info user MONALISA_HOST:9930
+xrootd.async off
+xrootd.chksum max 2 md5
+xrd.sched mint 32 maxt 2048 avlt 512 idle 780
+
+#                               #
+#     3rd party xfers stuff     #
+#                               #
+
+#xrootd.fslib PREFIX/libMARKLIB64/libXrdxFtsOfs.so
+## enable third party copies in this machines
+#ftsofs.thirdparty 1
+#ftsofs.thirdparty.statedirectory XRDBASEDIR/admin
+## number of transfers in parallel
+#ftsofs.thirdparty.slots 5
+## nominal io rate of a single transfer (25 Mb)
+#ftsofs.thirdparty.slotrate 25
+
+ofs.trace open
+ofs.tpc pgm PREFIX/bin/xrdcp -f
+
+# Enable window scaling on the monostream connection
+xrd.network buffsz 0 nodnr
+xrd.network routes split use eth0,ib0
+
+
+#                               #
+#         Auth Section          #
+#                               #
+xrootd.seclib PREFIX/libMARKLIB64/libXrdSec.so
+sec.protocol PREFIX/libMARKLIB64 unix
+ofs.authlib PREFIX/libMARKLIB64/ACCLIB
+ofs.authorize
+
+#				#
+#	  CMSD Section		#
+#				#
+
+cms.delay servers 1 startup 10
+
+# According to the documentation[1], the cms.sched directive is only used on managers,
+# not on data servers.
+# [1] http://xrootd.org/doc/prod/cms_config.htm#_Toc339484347
+#cms.sched cpu 10 io 10 space 80
+
+
+#                               #
+#				#
+#	   OSS Section		#
+#   Here the real fun begins	#
+#                               #
+
+oss.defaults nomig nodread nocheck norcreate nolock
+oss.alloc 512M 2 0
+oss.fdlimit * max
+
+OSSCACHE
+
+
+# The funny ALICE name translation, for the global metamanager
+# to aggregate all the clusters
+oss.namelib PREFIX/libMARKLIB64/libXrdAggregatingName2Name.so LOCALPATHPFX
+
+# The metamanager acts as a virtual stager
+# Beware, internally xrootd strips the trailing slashes
+# So, no point in adding them here
+oss.localroot LOCALROOT

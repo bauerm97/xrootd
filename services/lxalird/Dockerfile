@@ -1,4 +1,3 @@
-FROM debian:8.5
+FROM xrootd_base
 
-ADD https://packages.chef.io/stable/debian/8/chef_12.12.15-1_amd64.deb chef.deb
-RUN dpkg -i chef.deb
+RUN chef-client -z -o /cookbooks/alicet2_xrootd/recipes/redirector.rb

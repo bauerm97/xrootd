@@ -1,0 +1,8 @@
+{
+  "name": "redirector",
+  "chef_type": "role",
+  "json_class": "Chef::Role",
+    "run_list": [
+    "recipe[alicet2_xrootd::redirector]"
+    ]
+}

@@ -4,12 +4,6 @@
 #
 
 # Required packages
-package "dnsmasq" do
-  action :install
-end
-service "dnsmasq" do
-	action [:enable,:start]
-end
 #package "resolvconf" do
 #  action :install
 #end
@@ -54,23 +48,14 @@ end
 user='jessie'
 #put all xrootd files where they should belong
 
+user 'vagrant'do
+  supports :manage_home =>true
+  action :create
+end  
 #add dnsmasq entry that all vagrant.test questions go to our nameserver
 
 #file '/etc/resolvconf/resolv.conf.d/base' do
-file '/etc/resolv.conf' do
-#domain vagrant.test
-  content"
-  nameserver #{node["dns"]["nameserver"] }
-  nameserver 8.8.8.8 
-"
-end
 
-
-file '/etc/dnsmasq.conf' do
-  content"server=/vagrant.test/#{node["dns"]["nameserver"]}
-"
-    notifies :restart, "service[dnsmasq]"
-end
 
 #execute "reload resolvconf" do
 #  command "resolvconf -u"

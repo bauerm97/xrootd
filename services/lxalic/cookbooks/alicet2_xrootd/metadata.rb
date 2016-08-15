@@ -1,7 +1,0 @@
-name             'alicet2_xrootd'
-depends          'alicet2_init-script'
-maintainer       'Distributed Computing'
-maintainer_email 'distributed-computing@gsi.de'
-license          'All rights reserved'
-description      'Installs/Configures xrootd'
-version          '0.3.1'

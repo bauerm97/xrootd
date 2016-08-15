@@ -5,7 +5,6 @@ services:
   lxalic:
     build:
       context: ./services/lxalic
-
   lxalidns:
     build:
       context: ./services/lxalidns 

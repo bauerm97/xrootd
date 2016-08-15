@@ -1,3 +1,4 @@
 FROM xrootd_base
 
-RUN chef-client -z -o /cookbooks/alicet2_xrootd/recipes/redirector.rb
+ADD ./dynamic.json /chef/attributes/
+RUN chef-client -j /chef/attributes/dynamic.json --local -o "role[redirector]"

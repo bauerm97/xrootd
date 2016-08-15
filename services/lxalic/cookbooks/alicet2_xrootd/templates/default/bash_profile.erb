@@ -1,6 +1,0 @@
-# Useful alises
-alias ll='ls -la --color=auto'
-
-# Environment variables for xrootd
-export PATH=<%= node["xrootd"]["installdir"] %><%= @xrootd_directory %>/bin:<%= node["xrootd"]["installdir"] %><%= @xrootd_directory %>/scripts/xrootd:$PATH
-export LD_LIBRARY_PATH=<%= node["xrootd"]["installdir"] %><%= @xrootd_directory %>/lib:$LD_LIBRARY_PATH

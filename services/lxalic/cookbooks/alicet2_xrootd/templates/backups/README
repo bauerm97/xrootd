@@ -1,9 +1,0 @@
-After manual ALICE-style compilation of xrootd, move the following files out of the files directory into the templates/backups directory, because they are handled via templates:
-
-etc/xrootd/crontab.xrootd.tmp
-etc/xrootd/system.cnf
-etc/xrootd/manager/xrootd.xrootd.cf.tmp
-etc/xrootd/server/xrootd.xrootd.cf.tmp
-scripts/ApMon/servMon.sh
-scripts/ApMon/ApMon/ProcInfo.pm
-
